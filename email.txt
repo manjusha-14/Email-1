@@ -1,0 +1,85 @@
+import pandas as pd
+import numpy as np
+import re
+import nltk
+from nltk.corpus import stopwords
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Ensure NLTK data is downloaded
+nltk.download('stopwords')
+
+# Load the dataset
+# Assuming the dataset is a CSV file with columns 'text' and 'label'
+file_path = 'C:\Users\manju\Downloads\archive (1).csv'
+df = pd.read_csv(file_path)
+
+# Display the first few rows of the dataset
+print(df.head())
+
+# Preprocess the data
+def preprocess_text(text):
+    # Convert text to lowercase
+    text = text.lower()
+    # Remove any URLs
+    text = re.sub(r'http\S+', '', text)
+    # Remove any HTML tags
+    text = re.sub(r'<.*?>', '', text)
+    # Remove any non-alphabetic characters
+    text = re.sub(r'[^a-zA-Z]', ' ', text)
+    # Tokenize the text
+    tokens = text.split()
+    # Remove stopwords
+    tokens = [word for word in tokens if word not in stopwords.words('english')]
+    # Join the tokens back into a string
+    text = ' '.join(tokens)
+    return text
+
+df['text'] = df['text'].apply(preprocess_text)
+
+# Vectorize the text data
+vectorizer = TfidfVectorizer(max_features=5000)
+X = vectorizer.fit_transform(df['text']).toarray()
+y = df['label']
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train a machine learning model
+model = MultinomialNB()
+model.fit(X_train, y_train)
+
+# Evaluate the model
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+conf_matrix = confusion_matrix(y_test, y_pred)
+class_report = classification_report(y_test, y_pred)
+
+print(f'Accuracy: {accuracy}')
+print('Confusion Matrix:')
+print(conf_matrix)
+print('Classification Report:')
+print(class_report)
+
+# Visualize the confusion matrix
+plt.figure(figsize=(10, 7))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues')
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.title('Confusion Matrix')
+plt.show()
+
+# Making predictions on new data
+def predict_spam(text):
+    text = preprocess_text(text)
+    text_vectorized = vectorizer.transform([text]).toarray()
+    prediction = model.predict(text_vectorized)
+    return prediction[0]
+
+# Example usage
+new_email = "Congratulations! You've won a free lottery. Click here to claim your prize."
+print(f'New Email Prediction: {predict_spam(new_email)}')
